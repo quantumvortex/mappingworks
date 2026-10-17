@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mapping portfolio</title>
+  <style>
+    :root {
+      --bg: #0f0f12; --card-bg: #18181d; --text: #eaeaea;
+      --muted: #8b8b99; --ranked: #66ccff; --loved: #ff66ab; --accent: #7c5cff; --danger: #ff5c5c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 3rem 1.5rem; max-width: 1000px; margin: 0 auto;
+    }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 2rem; border-bottom: 1px solid #26262e; padding-bottom: 1rem;
+    }
+    nav a { color: var(--muted); text-decoration: none; margin-left: 1.5rem; }
+    nav a.active, nav a:hover { color: var(--text); }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+    button {
+      background: #24242c; color: var(--text); border: 1px solid #363642;
+      padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    }
+    button:hover { border-color: var(--accent); }
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg); border-radius: 8px; overflow: hidden;
+      border: 1px solid #24242c; cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+    }
+    .card:hover { transform: translateY(-4px); border-color: #454554; }
+    .card-banner { width: 100%; height: 110px; object-fit: cover; background: #222; }
+    .card-body { padding: 1rem; }
+    .song-title { font-weight: 600; margin-bottom: 0.4rem; line-height: 1.3; }
+    .meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--muted); }
+    .badge { font-weight: 700; font-size: 0.72rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+    .badge.ranked { color: var(--ranked); background: rgba(102, 204, 255, 0.12); }
+    .badge.loved { color: var(--loved); background: rgba(255, 102, 171, 0.12); }
+
+    footer {
+      margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #26262e;
+      display: flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem;
+    }
+    .admin-trigger { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0; }
+    .admin-trigger:hover { color: var(--text); }
+
+    dialog {
+      background: var(--card-bg); color: var(--text); border: 1px solid #363642;
+      border-radius: 10px; padding: 1.5rem; max-width: 550px; width: 92%; margin: auto;
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+    .form-group { margin-bottom: 0.9rem; }
+    .form-group label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem; }
+    input, select, textarea {
+      width: 100%; padding: 0.55rem; background: var(--bg); color: var(--text);
+      border: 1px solid #2e2e38; border-radius: 5px; font-family: inherit;
+    }
+    textarea { min-height: 130px; resize: vertical; }
+    .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 1.2rem; }
+    .right-actions { display: flex; gap: 0.6rem; }
+    .writeup-text { line-height: 1.6; white-space: pre-wrap; margin: 1.2rem 0; color: #d0d0dc; max-height: 60vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>mapping</h1>
+    <nav>
+      <a href="#" class="active">mapping</a>
+    </nav>
+  </header>
+
+  <p class="subtitle">Click a beatmap for write-ups and details.</p>
+  <div id="map-grid" class="grid"></div>
+
+  <footer>
+    <span>© 2026</span>
+    <button class="admin-trigger" onclick="openEditor(-1)">+ Admin</button>
+  </footer>
+
+  <!-- Write-up Viewer Modal -->
+  <dialog id="writeup-modal">
+    <h2 id="view-title"></h2>
+    <p id="view-meta" style="color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem;"></p>
+    <div id="view-body" class="writeup-text"></div>
+    <div class="modal-actions">
+      <button id="edit-this-btn" type="button">Edit Entry</button>
+      <div class="right-actions">
+        <a id="view-osu-link" href="#" target="_blank" rel="noopener"><button type="button">osu! Beatmap ↗</button></a>
+        <button onclick="document.getElementById('writeup-modal').close()">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- In-Site Admin Editor Modal -->
+  <dialog id="admin-modal">
+    <h3 id="editor-heading" style="margin-bottom: 1rem;">Add Beatmap</h3>
+    <div class="form-group">
+      <label>GitHub Personal Access Token (Saved locally in your browser)</label>
+      <input type="password" id="gh-token" placeholder="github_pat_..." />
+    </div>
+    <div class="form-group">
+      <label>Artist</label>
+      <input type="text" id="map-artist" placeholder="e.g., Camellia" />
+    </div>
+    <div class="form-group">
+      <label>Song Title</label>
+      <input type="text" id="map-title" placeholder="e.g., Chirality" />
+    </div>
+    <div class="form-group">
+      <label>osu! Beatmapset ID (Numbers at the end of the osu! beatmap URL)</label>
+      <input type="text" id="map-id" placeholder="e.g., 2150000" />
+    </div>
+    <div class="form-group">
+      <label>Date Mapped & Status</label>
+      <div style="display: flex; gap: 0.5rem;">
+        <input type="text" id="map-date" placeholder="21 April 2026" />
+        <select id="map-status">
+          <option value="">Unranked / Graveyard</option>
+          <option value="Ranked">Ranked</option>
+          <option value="Loved">Loved</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Map Write-up</label>
+      <textarea id="map-writeup" placeholder="Write your mapping process, concepts, or thoughts..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button id="delete-btn" onclick="deleteMap()" style="background: var(--danger); border: none; display: none;">Delete</button>
+      <div class="right-actions" style="margin-left: auto;">
+        <button onclick="document.getElementById('admin-modal').close()">Cancel</button>
+        <button id="save-btn" onclick="saveChanges()" style="background: var(--accent); border: none;">Publish</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // --- REPLACE THESE TWO LINES WITH YOUR GITHUB DETAILS ---
+    const GITHUB_USER = "quantumvortex";
+    const GITHUB_REPO = "mappingworks";
+
+    let maps = [];
+    let editingIndex = -1;
+
+    document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+
+    // Keyboard shortcut: Ctrl + Shift + E to open editor
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        openEditor(-1);
+      }
+    });
+
+    async function loadMaps() {
+      try {
+        const res = await fetch('./maps.json?t=' + Date.now());
+        maps = await res.json();
+        renderGrid();
+      } catch (err) {
+        console.error("Failed to load maps.json:", err);
+      }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('map-grid');
+      grid.innerHTML = maps.map((map, index) => {
+        const cover = `https://assets.ppy.sh/beatmaps/${map.beatmapsetId}/covers/cover.jpg`;
+        const badgeClass = map.status ? map.status.toLowerCase() : '';
+        return `
+          <div class="card" onclick="openWriteup(${index})">
+            <img class="card-banner" src="${cover}" alt="${map.title}" loading="lazy" />
+            <div class="card-body">
+              <div class="song-title">${map.artist} - ${map.title}</div>
+              <div class="meta">
+                <span>Mapped ${map.date}</span>
+                ${map.status ? `<span class="badge ${badgeClass}">${map.status}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openWriteup(index) {
+      const map = maps[index];
+      document.getElementById('view-title').textContent = `${map.artist} - ${map.title}`;
+      document.getElementById('view-meta').textContent = `Mapped ${map.date} ${map.status ? '• ' + map.status : ''}`;
+      document.getElementById('view-body').textContent = map.writeup || "No write-up added yet.";
+      document.getElementById('view-osu-link').href = `https://osu.ppy.sh/beatmapsets/${map.beatmapsetId}`;
+      document.getElementById('edit-this-btn').onclick = () => {
+        document.getElementById('writeup-modal').close();
+        openEditor(index);
+      };
+      document.getElementById('writeup-modal').showModal();
+    }
+
+    function openEditor(index) {
+      editingIndex = index;
+      const isEdit = index >= 0;
+      document.getElementById('editor-heading').textContent = isEdit ? "Edit Beatmap" : "Add New Beatmap";
+      document.getElementById('delete-btn').style.display = isEdit ? "block" : "none";
+
+      const map = isEdit ? maps[index] : { artist: "", title: "", beatmapsetId: "", date: "", status: "", writeup: "" };
+      document.getElementById('map-artist').value = map.artist;
+      document.getElementById('map-title').value = map.title;
+      document.getElementById('map-id').value = map.beatmapsetId;
+      document.getElementById('map-date').value = map.date;
+      document.getElementById('map-status').value = map.status;
+      document.getElementById('map-writeup').value = map.writeup;
+
+      document.getElementById('admin-modal').showModal();
+    }
+
+    async function commitToGitHub(updatedMaps, commitMessage) {
+      const token = document.getElementById('gh-token').value.trim();
+      if (!token) return alert("Please enter your GitHub Personal Access Token.");
+      localStorage.setItem('gh_token', token);
+
+      const btn = document.getElementById('save-btn');
+      btn.textContent = "Saving...";
+      btn.disabled = true;
+
+      const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/maps.json`;
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json"
+      };
+
+      try {
+        const getRes = await fetch(apiUrl, { headers, cache: "no-store" });
+        if (!getRes.ok) throw new Error("Could not fetch maps.json from GitHub. Check your username/repo/token.");
+        const fileData = await getRes.json();
+
+        const jsonString = JSON.stringify(updatedMaps, null, 2);
+        const bytes = new TextEncoder().encode(jsonString);
+        const binString = Array.from(bytes, (b) => String.fromCodePoint(b)).join("");
+        const base64Content = btoa(binString);
+
+        const putRes = await fetch(apiUrl, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            message: commitMessage,
+            content: base64Content,
+            sha: fileData.sha
+          })
+        });
+
+        if (!putRes.ok) throw new Error("Failed to commit changes. Make sure your token has Read & Write Contents permission.");
+
+        maps = updatedMaps;
+        renderGrid();
+        document.getElementById('admin-modal').close();
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.textContent = "Publish";
+        btn.disabled = false;
+      }
+    }
+
+    function saveChanges() {
+      const entry = {
+        artist: document.getElementById('map-artist').value.trim(),
+        title: document.getElementById('map-title').value.trim(),
+        beatmapsetId: document.getElementById('map-id').value.trim(),
+        date: document.getElementById('map-date').value.trim(),
+        status: document.getElementById('map-status').value,
+        writeup: document.getElementById('map-writeup').value
+      };
+
+      const updatedMaps = [...maps];
+      if (editingIndex >= 0) {
+        updatedMaps[editingIndex] = entry;
+      } else {
+        updatedMaps.unshift(entry); // Adds new map to the top of the grid
+      }
+
+      commitToGitHub(updatedMaps, `Update map: ${entry.artist} - ${entry.title}`);
+    }
+
+    function deleteMap() {
+      if (editingIndex < 0 || !confirm("Delete this beatmap from your portfolio?")) return;
+      const removed = maps[editingIndex];
+      const updatedMaps = maps.filter((_, i) => i !== editingIndex);
+      commitToGitHub(updatedMaps, `Delete map: ${removed.artist} - ${removed.title}`);
+    }
+
+    loadMaps();
+  </script>
+</body>
+</html>
